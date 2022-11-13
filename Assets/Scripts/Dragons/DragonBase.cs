@@ -24,6 +24,9 @@ public class DragonBase : ScriptableObject
     [SerializeField] int spDefense;
     [SerializeField] int speed;
 
+    [SerializeField] List<LearnableMove> learnableMoves;
+
+
 
     public string GetName()
     {
@@ -89,6 +92,30 @@ public class DragonBase : ScriptableObject
     {
         get { return speed; }
     }
+
+    public List<LearnableMove> LearnableMoves
+    {
+        get { return learnableMoves; }
+    }
+}
+
+
+[System.Serializable]
+public class LearnableMove
+{
+    [SerializeField] MoveBase moveBase;
+    [SerializeField] int level;
+
+    public MoveBase Base
+    {
+        get { return moveBase; }
+    }
+
+    public int Level
+    {
+        get { return level; }
+    }
+
 }
 
 public enum DragonType
