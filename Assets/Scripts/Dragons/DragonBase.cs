@@ -124,9 +124,36 @@ public enum DragonType
     Normal,
     Fire,
     Water,
+    Electric,
     Grass,
-    Poison,
     Ice,
-    Fighting,
-    Ground
+    Poison,
+}
+
+public class TypeChart
+{
+    static float[][] chart =
+    {
+        //Has to be same order as DragonType class
+        //                       Nor   Fir   Wat   Ele   Gra   Ice   Poi   
+        /*Normal*/  new float[] {1f,   1f,   1f,   1f,   1f,   1f,   1f,   },
+        /*Fire*/    new float[] {1f,   0.5f, 0.5f, 1f,   2f,   2f,   1f,   },
+        /*Water*/   new float[] {1f,   2f,   0.5f, 1f,   0.5f, 1f,   1f,   },
+        /*Electric*/new float[] {1f,   1f,   2f,   0.5f, 0.5f, 1f,   1f,   },
+        /*Grass*/   new float[] {1f,   0.5f, 2f,   1f,   0.5f, 1f,   0.5f, },
+        /*Ice*/     new float[] {1f,   0.5f, 0.5f, 1f,   2f,   0.5f, 1f,   },
+        /*Poison*/  new float[] {1f,   1f,   1f,   1f,   2f,   1f,   0.5f, },
+
+    };
+
+    public static float GetEffectiveness(DragonType attackType, DragonType defenseType)
+    {
+        if (attackType == DragonType.None || defenseType == DragonType.None)
+            return 1;
+
+        int row = (int)attackType - 1;
+        int col = (int)defenseType - 1;
+
+        return chart[row][col];
+    }
 }

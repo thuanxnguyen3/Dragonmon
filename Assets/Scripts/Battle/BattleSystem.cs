@@ -33,7 +33,6 @@ public class BattleSystem : MonoBehaviour
         dialogBox.SetMoveNames(playerUnit.Dragon.Moves);
 
         yield return dialogBox.TypeDialog($"A wild {enemyUnit.Dragon.Base.Name} appeared.");
-        yield return new WaitForSeconds(1f);
 
         PlayerAction();
     }
@@ -59,12 +58,12 @@ public class BattleSystem : MonoBehaviour
         var move = playerUnit.Dragon.Moves[currentMove];
         yield return dialogBox.TypeDialog($"{playerUnit.Dragon.Base.Name} used {move.Base.Name}");
 
-        yield return new WaitForSeconds(1f);
-
-        bool isFainted = enemyUnit.Dragon.TakeDamage(move, playerUnit.Dragon);
+        var damageDetails = enemyUnit.Dragon.TakeDamage(move, playerUnit.Dragon);
         yield return enemyHud.UpdateHP();
+        yield return ShowDamageDetails(damageDetails);
 
-        if (isFainted)
+
+        if (damageDetails.Fainted)
         {
             yield return dialogBox.TypeDialog($"{enemyUnit.Dragon.Base.Name} Fainted");
         }
@@ -82,12 +81,11 @@ public class BattleSystem : MonoBehaviour
 
         yield return dialogBox.TypeDialog($"{enemyUnit.Dragon.Base.Name} used {move.Base.Name}");
 
-        yield return new WaitForSeconds(1f);
-
-        bool isFainted = playerUnit.Dragon.TakeDamage(move, enemyUnit.Dragon);
+        var damageDetails = playerUnit.Dragon.TakeDamage(move, enemyUnit.Dragon);
         yield return playerHud.UpdateHP();
+        yield return ShowDamageDetails(damageDetails);
 
-        if (isFainted)
+        if (damageDetails.Fainted)
         {
             yield return dialogBox.TypeDialog($"{playerUnit.Dragon.Base.Name} Fainted");
         }
@@ -95,6 +93,19 @@ public class BattleSystem : MonoBehaviour
         {
             PlayerAction();
         }
+    }
+
+    IEnumerator ShowDamageDetails(DamageDetails damageDetails)
+    {
+        if (damageDetails.Critical > 1f)
+            yield return dialogBox.TypeDialog("A critical hit!");
+
+        if(damageDetails.TypeEffectiveness > 1f)
+            yield return dialogBox.TypeDialog("It's super effective!");
+        else if (damageDetails.TypeEffectiveness > 1f)
+            yield return dialogBox.TypeDialog("It's not very effective!");
+
+
     }
 
     private void Update()
