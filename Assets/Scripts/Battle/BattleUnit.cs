@@ -34,6 +34,9 @@ public class BattleUnit : MonoBehaviour
             image.sprite = Dragon.Base.FrontSprite;
 
         }
+
+        image.color = originalColor;
+
         PlayEnterAnimation();
     }
 

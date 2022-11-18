@@ -56,6 +56,7 @@ public class BattleSystem : MonoBehaviour
     {
         state = BattleState.Busy;
         var move = playerUnit.Dragon.Moves[currentMove];
+        move.PP--;
         yield return dialogBox.TypeDialog($"{playerUnit.Dragon.Base.Name} used {move.Base.Name}");
 
         playerUnit.PlayAttackAnimation();
@@ -83,7 +84,7 @@ public class BattleSystem : MonoBehaviour
         state = BattleState.EnemyMove;
 
         var move = enemyUnit.Dragon.GetRandomMove();
-
+        move.PP--;
         yield return dialogBox.TypeDialog($"{enemyUnit.Dragon.Base.Name} used {move.Base.Name}");
 
         enemyUnit.PlayAttackAnimation();
