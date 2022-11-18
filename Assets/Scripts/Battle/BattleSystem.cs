@@ -58,6 +58,10 @@ public class BattleSystem : MonoBehaviour
         var move = playerUnit.Dragon.Moves[currentMove];
         yield return dialogBox.TypeDialog($"{playerUnit.Dragon.Base.Name} used {move.Base.Name}");
 
+        playerUnit.PlayAttackAnimation();
+        yield return new WaitForSeconds(1f);
+
+        enemyUnit.PlayHitAnimation();
         var damageDetails = enemyUnit.Dragon.TakeDamage(move, playerUnit.Dragon);
         yield return enemyHud.UpdateHP();
         yield return ShowDamageDetails(damageDetails);
@@ -66,6 +70,7 @@ public class BattleSystem : MonoBehaviour
         if (damageDetails.Fainted)
         {
             yield return dialogBox.TypeDialog($"{enemyUnit.Dragon.Base.Name} Fainted");
+            enemyUnit.PlayFaintAnimation();
         }
         else
         {
@@ -81,6 +86,10 @@ public class BattleSystem : MonoBehaviour
 
         yield return dialogBox.TypeDialog($"{enemyUnit.Dragon.Base.Name} used {move.Base.Name}");
 
+        enemyUnit.PlayAttackAnimation();
+        yield return new WaitForSeconds(1f);
+
+        playerUnit.PlayHitAnimation();
         var damageDetails = playerUnit.Dragon.TakeDamage(move, enemyUnit.Dragon);
         yield return playerHud.UpdateHP();
         yield return ShowDamageDetails(damageDetails);
@@ -88,6 +97,7 @@ public class BattleSystem : MonoBehaviour
         if (damageDetails.Fainted)
         {
             yield return dialogBox.TypeDialog($"{playerUnit.Dragon.Base.Name} Fainted");
+            playerUnit.PlayFaintAnimation();
         }
         else
         {
