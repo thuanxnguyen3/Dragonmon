@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e1d78b4aca8217d4f82cbbe8a632d255, type: 3}
-  m_Name: Ember
+  m_Name: AbsoluteZero
   m_EditorClassIdentifier: 
-  name: Ember
+  name: Absolute Zero
   description: 
-  type: 2
-  power: 45
+  type: 6
+  power: 40
   accuracy: 100
-  pp: 25
+  pp: 20

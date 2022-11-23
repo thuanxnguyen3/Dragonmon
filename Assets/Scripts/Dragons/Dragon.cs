@@ -2,18 +2,32 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+[System.Serializable]
 public class Dragon
 {
-    public DragonBase Base { get; set; }
-    public int Level { get; set; }
+    [SerializeField] DragonBase _base;
+    [SerializeField] int level;
+
+    public DragonBase Base
+    {
+        get
+        {
+            return _base;
+        }
+    }
+
+    public int Level
+    {
+        get {
+            return level;
+        }
+    }
 
     public int HP { get; set; }
     public List<Move> Moves { get; set; }
 
-    public Dragon(DragonBase dBase, int dLevel)
+    public void Init()
     {
-        Base = dBase;
-        Level = dLevel;
         HP = MaxHp;
 
         //Generate Moves

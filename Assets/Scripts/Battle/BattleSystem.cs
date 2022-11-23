@@ -13,20 +13,26 @@ public class BattleSystem : MonoBehaviour
     [SerializeField] BattleHud enemyHud;
     [SerializeField] BattleDialogBox dialogBox;
 
+    //public event Action<bool> OnBattleOver;
+
     BattleState state;
     int currentAction;
     int currentMove;
 
+    DragonParty playerParty;
+    Dragon enemyDragon;
 
-    private void Start()
+    public void StartBattle(DragonParty playerParty, Dragon enemyDragon)
     {
+        this.playerParty = playerParty;
+        this.enemyDragon = enemyDragon;
         StartCoroutine(SetupBattle());
     }
 
     public IEnumerator SetupBattle()
     {
-        playerUnit.Setup();
-        enemyUnit.Setup();
+        playerUnit.Setup(playerParty.GetHealthyDragon());
+        enemyUnit.Setup(enemyDragon);
         playerHud.SetData(playerUnit.Dragon);
         enemyHud.SetData(enemyUnit.Dragon);
 
@@ -72,6 +78,7 @@ public class BattleSystem : MonoBehaviour
         {
             yield return dialogBox.TypeDialog($"{enemyUnit.Dragon.Base.Name} Fainted");
             enemyUnit.PlayFaintAnimation();
+
         }
         else
         {
@@ -99,6 +106,21 @@ public class BattleSystem : MonoBehaviour
         {
             yield return dialogBox.TypeDialog($"{playerUnit.Dragon.Base.Name} Fainted");
             playerUnit.PlayFaintAnimation();
+
+            yield return new WaitForSeconds(2f);
+            var nextDragon = playerParty.GetHealthyDragon();
+            if (nextDragon != null)
+            {
+                playerUnit.Setup(nextDragon);
+                playerHud.SetData(nextDragon);
+
+                dialogBox.SetMoveNames(nextDragon.Moves);
+
+                yield return dialogBox.TypeDialog($"Go {nextDragon.Base.Name}!.");
+
+                PlayerAction();
+            }
+
         }
         else
         {
@@ -119,9 +141,9 @@ public class BattleSystem : MonoBehaviour
 
     }
 
-    private void Update()
+    public void HandleUpdate()
     {
-        if(state == BattleState.PlayerAction)
+        if (state == BattleState.PlayerAction)
         {
             HandleActionSelection();
         }
