@@ -7,6 +7,11 @@ public class DragonParty : MonoBehaviour
 {
     [SerializeField] List<Dragon> dragons;
 
+    public List<Dragon> Dragons
+    {
+        get { return dragons; }
+    }
+
     private void Start()
     {
         foreach (var dragon in dragons)
