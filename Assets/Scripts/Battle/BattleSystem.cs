@@ -3,14 +3,12 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum BattleState { Start, PlayerAction, PlayerMove, EnemyMove, Busy}
+public enum BattleState { Start, ActionSelection, MoveSelection, PerformMove, Busy, PartyScreen}
 
 public class BattleSystem : MonoBehaviour
 {
     [SerializeField] BattleUnit playerUnit;
     [SerializeField] BattleUnit enemyUnit;
-    [SerializeField] BattleHud playerHud;
-    [SerializeField] BattleHud enemyHud;
     [SerializeField] BattleDialogBox dialogBox;
     [SerializeField] PartyScreen partyScreen;
 
@@ -19,6 +17,7 @@ public class BattleSystem : MonoBehaviour
     BattleState state;
     int currentAction;
     int currentMove;
+    int currentMember;
 
     DragonParty playerParty;
     Dragon enemyDragon;
@@ -34,8 +33,6 @@ public class BattleSystem : MonoBehaviour
     {
         playerUnit.Setup(playerParty.GetHealthyDragon());
         enemyUnit.Setup(enemyDragon);
-        playerHud.SetData(playerUnit.Dragon);
-        enemyHud.SetData(enemyUnit.Dragon);
 
         partyScreen.Init();
 
@@ -43,97 +40,97 @@ public class BattleSystem : MonoBehaviour
 
         yield return dialogBox.TypeDialog($"A wild {enemyUnit.Dragon.Base.Name} appeared.");
 
-        PlayerAction();
+        ActionSelection();
     }
 
-    void PlayerAction()
+    void ActionSelection()
     {
-        state = BattleState.PlayerAction;
+        state = BattleState.ActionSelection;
         dialogBox.SetDialog("Choose an action");
         dialogBox.EnableActionSelector(true);
     }
 
     void OpenPartyScreen()
     {
+        state = BattleState.PartyScreen;
         partyScreen.SetPartyData(playerParty.Dragons);
         partyScreen.gameObject.SetActive(true);
     }
 
-    void PlayerMove()
+    void MoveSelection()
     {
-        state = BattleState.PlayerMove;
+        state = BattleState.MoveSelection;
         dialogBox.EnableActionSelector(false);
         dialogBox.EnableDialogText(false);
         dialogBox.EnableMoveSelector(true);
     }
 
-    IEnumerator PerformPlayerMove()
+    IEnumerator PlayerMove()
     {
-        state = BattleState.Busy;
+        state = BattleState.PerformMove;
         var move = playerUnit.Dragon.Moves[currentMove];
-        move.PP--;
-        yield return dialogBox.TypeDialog($"{playerUnit.Dragon.Base.Name} used {move.Base.Name}");
+        yield return RunMove(playerUnit, enemyUnit, move);
 
-        playerUnit.PlayAttackAnimation();
-        yield return new WaitForSeconds(1f);
-
-        enemyUnit.PlayHitAnimation();
-        var damageDetails = enemyUnit.Dragon.TakeDamage(move, playerUnit.Dragon);
-        yield return enemyHud.UpdateHP();
-        yield return ShowDamageDetails(damageDetails);
-
-
-        if (damageDetails.Fainted)
-        {
-            yield return dialogBox.TypeDialog($"{enemyUnit.Dragon.Base.Name} Fainted");
-            enemyUnit.PlayFaintAnimation();
-
-        }
-        else
-        {
+        // If the battle stat was not changed by RunMove, then go to next step
+        if(state == BattleState.PerformMove)
             StartCoroutine(EnemyMove());
-        }
     }
 
     IEnumerator EnemyMove()
     {
-        state = BattleState.EnemyMove;
+        state = BattleState.PerformMove;
 
         var move = enemyUnit.Dragon.GetRandomMove();
-        move.PP--;
-        yield return dialogBox.TypeDialog($"{enemyUnit.Dragon.Base.Name} used {move.Base.Name}");
+        yield return RunMove(enemyUnit, playerUnit, move);
 
-        enemyUnit.PlayAttackAnimation();
+        // If the battle stat was not changed by RunMove, then go to next step
+        if (state == BattleState.PerformMove)
+            ActionSelection();
+        
+    }
+
+    IEnumerator RunMove(BattleUnit sourceUnit, BattleUnit targetUnit, Move move)
+    {
+        move.PP--;
+        yield return dialogBox.TypeDialog($"{sourceUnit.Dragon.Base.Name} used {move.Base.Name}");
+
+        sourceUnit.PlayAttackAnimation();
         yield return new WaitForSeconds(1f);
 
-        playerUnit.PlayHitAnimation();
-        var damageDetails = playerUnit.Dragon.TakeDamage(move, enemyUnit.Dragon);
-        yield return playerHud.UpdateHP();
+        targetUnit.PlayHitAnimation();
+        var damageDetails = targetUnit.Dragon.TakeDamage(move, sourceUnit.Dragon);
+        yield return targetUnit.Hud.UpdateHP();
         yield return ShowDamageDetails(damageDetails);
+
 
         if (damageDetails.Fainted)
         {
-            yield return dialogBox.TypeDialog($"{playerUnit.Dragon.Base.Name} Fainted");
-            playerUnit.PlayFaintAnimation();
-
+            yield return dialogBox.TypeDialog($"{targetUnit.Dragon.Base.Name} Fainted");
+            targetUnit.PlayFaintAnimation();
             yield return new WaitForSeconds(2f);
+
+            CheckForBattleOver(targetUnit);
+            //Game over
+        }
+    }
+
+    void CheckForBattleOver(BattleUnit faintedUnit)
+    {
+        if(faintedUnit.IsPlayerUnit)
+        {
             var nextDragon = playerParty.GetHealthyDragon();
             if (nextDragon != null)
             {
-                playerUnit.Setup(nextDragon);
-                playerHud.SetData(nextDragon);
-
-                dialogBox.SetMoveNames(nextDragon.Moves);
-
-                yield return dialogBox.TypeDialog($"Go {nextDragon.Base.Name}!");
-
-                PlayerAction();
+                OpenPartyScreen();
             }
-
-        }
+            else
+            {
+                //game over
+            }
+        } 
         else
         {
-            PlayerAction();
+            // game over
         }
     }
 
@@ -152,13 +149,17 @@ public class BattleSystem : MonoBehaviour
 
     public void HandleUpdate()
     {
-        if (state == BattleState.PlayerAction)
+        if (state == BattleState.ActionSelection)
         {
             HandleActionSelection();
         }
-        else if(state == BattleState.PlayerMove)
+        else if(state == BattleState.MoveSelection)
         {
             HandleMoveSelection();
+        }
+        else if (state == BattleState.PartyScreen)
+        {
+            HandlePartySelection();
         }
     }
 
@@ -182,7 +183,7 @@ public class BattleSystem : MonoBehaviour
             if (currentAction == 0)
             {
                 //Fight
-                PlayerMove();
+                MoveSelection();
             } 
             else if (currentAction == 1)
             {
@@ -219,14 +220,72 @@ public class BattleSystem : MonoBehaviour
         {
             dialogBox.EnableMoveSelector(false);
             dialogBox.EnableDialogText(true);
-            StartCoroutine(PerformPlayerMove());
+            StartCoroutine(PlayerMove());
 
         }
         else if (Input.GetKeyDown(KeyCode.X))
         {
             dialogBox.EnableMoveSelector(false);
             dialogBox.EnableDialogText(true);
-            PlayerAction();
+            ActionSelection();
         }
+    }
+
+    void HandlePartySelection()
+    {
+        if (Input.GetKeyDown(KeyCode.RightArrow))
+            ++currentMember;
+        else if (Input.GetKeyDown(KeyCode.LeftArrow))
+            --currentMember;
+        else if (Input.GetKeyDown(KeyCode.DownArrow))
+            currentMember += 2;
+        else if (Input.GetKeyDown(KeyCode.UpArrow))
+            currentMember -= 2;
+
+        currentMember = Mathf.Clamp(currentMember, 0, playerParty.Dragons.Count - 1);
+
+        partyScreen.UpdateMemberSelection(currentMember);
+
+        if(Input.GetKeyDown(KeyCode.Z))
+        {
+            var selectedMember = playerParty.Dragons[currentMember];
+            if (selectedMember.HP <= 0)
+            {
+                partyScreen.SetMessageText("You can't send out a fainted dragon");
+                return;
+            }
+            if (selectedMember == playerUnit.Dragon)
+            {
+                partyScreen.SetMessageText("You can't switch with the same dragon");
+                return;
+            }
+
+            partyScreen.gameObject.SetActive(false);
+            state = BattleState.Busy;
+            StartCoroutine(SwitchDragon(selectedMember));
+        }
+        else if(Input.GetKeyDown(KeyCode.X))
+        {
+            partyScreen.gameObject.SetActive(false);
+            ActionSelection();
+        }
+    }
+
+    IEnumerator SwitchDragon(Dragon newDragon)
+    {
+        if(playerUnit.Dragon.HP > 0)
+        {
+            yield return dialogBox.TypeDialog($"Come back {playerUnit.Dragon.Base.Name}");
+            playerUnit.PlayFaintAnimation();
+            yield return new WaitForSeconds(2f);
+        }
+        
+
+        playerUnit.Setup(newDragon);
+        dialogBox.SetMoveNames(newDragon.Moves);
+
+        yield return dialogBox.TypeDialog($"Go {newDragon.Base.Name}!");
+
+        StartCoroutine(EnemyMove());
     }
 }

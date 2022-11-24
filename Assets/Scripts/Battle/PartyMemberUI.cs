@@ -10,7 +10,10 @@ public class PartyMemberUI : MonoBehaviour
     [SerializeField] HPBar hpBar;
     [SerializeField] Text hpText;
 
+    [SerializeField] Color highlightedColor;
+
     Dragon _dragon;
+
 
     public void SetData(Dragon dragon)
     {
@@ -20,5 +23,13 @@ public class PartyMemberUI : MonoBehaviour
         levelText.text = "Lvl " + dragon.Level;
         hpBar.SetHP((float)dragon.HP / dragon.MaxHp);
         hpText.text = dragon.HP + "/" + dragon.MaxHp;
+    }
+
+    public void SetSelected(bool selected)
+    {
+        if (selected)
+            nameText.color = highlightedColor;
+        else
+            nameText.color = Color.black;
     }
 }
