@@ -96,14 +96,21 @@ public class BattleSystem : MonoBehaviour
 
         sourceUnit.PlayAttackAnimation();
         yield return new WaitForSeconds(1f);
-
         targetUnit.PlayHitAnimation();
-        var damageDetails = targetUnit.Dragon.TakeDamage(move, sourceUnit.Dragon);
-        yield return targetUnit.Hud.UpdateHP();
-        yield return ShowDamageDetails(damageDetails);
+
+        if (move.Base.Category == MoveCategory.Status)
+        {
+            yield return RunMoveEffects(move, sourceUnit.Dragon, targetUnit.Dragon);
+        }
+        else
+        {
+            var damageDetails = targetUnit.Dragon.TakeDamage(move, sourceUnit.Dragon);
+            yield return targetUnit.Hud.UpdateHP();
+            yield return ShowDamageDetails(damageDetails);
+        }
 
 
-        if (damageDetails.Fainted)
+        if (targetUnit.Dragon.HP <= 0)
         {
             yield return dialogBox.TypeDialog($"{targetUnit.Dragon.Base.Name} Fainted");
             targetUnit.PlayFaintAnimation();
@@ -111,6 +118,29 @@ public class BattleSystem : MonoBehaviour
 
             CheckForBattleOver(targetUnit);
             //Game over
+        }
+    }
+
+    IEnumerator RunMoveEffects(Move move, Dragon source, Dragon target)
+    {
+        var effects = move.Base.Effects;
+        if (effects.Boosts != null)
+        {
+            if (move.Base.Target == MoveTarget.Self)
+                source.ApplyBoosts(effects.Boosts);
+            else
+                target.ApplyBoosts(effects.Boosts);
+        }
+        yield return ShowStatusChanges(source);
+        yield return ShowStatusChanges(target);
+    }
+
+    IEnumerator ShowStatusChanges(Dragon dragon)
+    {
+        while (dragon.StatusChanges.Count > 0)
+        {
+            var message = dragon.StatusChanges.Dequeue();
+            yield return dialogBox.TypeDialog(message);
         }
     }
 

@@ -130,6 +130,15 @@ public enum DragonType
     Poison,
 }
 
+public enum Stat
+{
+    Attack,
+    Defense,
+    SpAttack,
+    SpDefense,
+    Speed
+}
+
 public class TypeChart
 {
     static float[][] chart =
