@@ -91,6 +91,16 @@ public class BattleSystem : MonoBehaviour
 
     IEnumerator RunMove(BattleUnit sourceUnit, BattleUnit targetUnit, Move move)
     {
+        bool canRunMove = sourceUnit.Dragon.OnBeforeMove();
+
+        if(!canRunMove)
+        {
+            yield return ShowStatusChanges(sourceUnit.Dragon);
+            yield return sourceUnit.Hud.UpdateHP();
+            yield break;
+        }
+        yield return ShowStatusChanges(sourceUnit.Dragon);
+
         move.PP--;
         yield return dialogBox.TypeDialog($"{sourceUnit.Dragon.Base.Name} used {move.Base.Name}");
 
@@ -119,11 +129,28 @@ public class BattleSystem : MonoBehaviour
             CheckForBattleOver(targetUnit);
             //Game over
         }
+
+        // Statues like burn or psn will hurt the dragon after the turn
+        sourceUnit.Dragon.OnAfterTurn();
+        yield return ShowStatusChanges(sourceUnit.Dragon);
+        yield return sourceUnit.Hud.UpdateHP();
+
+        if (sourceUnit.Dragon.HP <= 0)
+        {
+            yield return dialogBox.TypeDialog($"{targetUnit.Dragon.Base.Name} Fainted");
+            sourceUnit.PlayFaintAnimation();
+            yield return new WaitForSeconds(2f);
+
+            CheckForBattleOver(sourceUnit);
+            //Game over
+        }
     }
 
     IEnumerator RunMoveEffects(Move move, Dragon source, Dragon target)
     {
         var effects = move.Base.Effects;
+
+        //Stat Boosting
         if (effects.Boosts != null)
         {
             if (move.Base.Target == MoveTarget.Self)
@@ -131,6 +158,13 @@ public class BattleSystem : MonoBehaviour
             else
                 target.ApplyBoosts(effects.Boosts);
         }
+
+        //Status Condition
+        if (effects.Status != ConditionID.none)
+        {
+            target.SetStatus(effects.Status);
+        }
+
         yield return ShowStatusChanges(source);
         yield return ShowStatusChanges(target);
     }
@@ -291,7 +325,10 @@ public class BattleSystem : MonoBehaviour
             }
 
             partyScreen.gameObject.SetActive(false);
-            state = BattleState.Busy;
+            state = BattleState.MoveSelection;
+
+            dialogBox.EnableActionSelector(false);
+
             StartCoroutine(SwitchDragon(selectedMember));
         }
         else if(Input.GetKeyDown(KeyCode.X))
@@ -303,13 +340,14 @@ public class BattleSystem : MonoBehaviour
 
     IEnumerator SwitchDragon(Dragon newDragon)
     {
-        if(playerUnit.Dragon.HP > 0)
+
+        if (playerUnit.Dragon.HP > 0)
         {
             yield return dialogBox.TypeDialog($"Come back {playerUnit.Dragon.Base.Name}");
             playerUnit.PlayFaintAnimation();
             yield return new WaitForSeconds(2f);
+
         }
-        
 
         playerUnit.Setup(newDragon);
         dialogBox.SetMoveNames(newDragon.Moves);

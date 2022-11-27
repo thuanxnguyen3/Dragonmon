@@ -15,7 +15,7 @@ MonoBehaviour:
   name: Ghidorah
   description: 
   frontSprite: {fileID: 1044642455, guid: b7fdb710e5a12764891e3b6e1474db1f, type: 3}
-  backSprite: {fileID: 0}
+  backSprite: {fileID: 1044642455, guid: b7fdb710e5a12764891e3b6e1474db1f, type: 3}
   type1: 5
   type2: 7
   maxHp: 45
@@ -29,3 +29,5 @@ MonoBehaviour:
     level: 1
   - moveBase: {fileID: 11400000, guid: 86dea7fb7523bcf418b9893f230fe205, type: 2}
     level: 4
+  - moveBase: {fileID: 11400000, guid: 1cf7e4c03fba5964ea398b2cbdc802f2, type: 2}
+    level: 9

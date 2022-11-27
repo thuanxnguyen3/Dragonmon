@@ -9,6 +9,11 @@ public class GameController : MonoBehaviour
     [SerializeField] BattleSystem battleSystem;
     [SerializeField] GameObject playerController;
 
+    private void Awake()
+    {
+        ConditionDB.Init();
+    }
+
     private void Update()
     {
         if (state == GameState.Battle)
