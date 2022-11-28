@@ -3,8 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum BattleState { Start, ActionSelection, MoveSelection, PerformMove, Busy, PartyScreen}
+public enum BattleState { Start, ActionSelection, MoveSelection, RunningTurn, Busy, PartyScreen, BattleOver}
 
+public enum BattleAction { Move, SwitchDragon, UseItem, Run}
 public class BattleSystem : MonoBehaviour
 {
     [SerializeField] BattleUnit playerUnit;
@@ -15,6 +16,7 @@ public class BattleSystem : MonoBehaviour
     //public event Action<bool> OnBattleOver;
 
     BattleState state;
+    BattleState? prevState;
     int currentAction;
     int currentMove;
     int currentMember;
@@ -65,29 +67,48 @@ public class BattleSystem : MonoBehaviour
         dialogBox.EnableMoveSelector(true);
     }
 
-    IEnumerator PlayerMove()
+    IEnumerator RunTurns(BattleAction playerAction)
     {
-        state = BattleState.PerformMove;
-        var move = playerUnit.Dragon.Moves[currentMove];
-        yield return RunMove(playerUnit, enemyUnit, move);
+        state = BattleState.RunningTurn;
 
-        // If the battle stat was not changed by RunMove, then go to next step
-        if(state == BattleState.PerformMove)
-            StartCoroutine(EnemyMove());
+        if(playerAction == BattleAction.Move)
+        {
+            playerUnit.Dragon.CurrentMove  = playerUnit.Dragon.Moves[currentMove];
+            enemyUnit.Dragon.CurrentMove = enemyUnit.Dragon.GetRandomMove();
+
+            //Check who goes first but this does not matter right now
+
+            var firstUnit = playerUnit;
+            var secondUnit = enemyUnit;
+
+            //First turn
+            yield return RunMove(firstUnit, secondUnit, firstUnit.Dragon.CurrentMove);
+            yield return RunAfterTurn(firstUnit);
+            if (state == BattleState.BattleOver) yield break;
+
+            //Second turn
+            yield return RunMove(secondUnit, firstUnit, secondUnit.Dragon.CurrentMove);
+            yield return RunAfterTurn(secondUnit);
+            if (state == BattleState.BattleOver) yield break;
+
+        } 
+        else
+        {
+            if(playerAction == BattleAction.SwitchDragon)
+            {
+                var selectedDragon = playerParty.Dragons[currentMember];
+                state = BattleState.Busy;
+                yield return SwitchDragon(selectedDragon);
+            }
+
+            //Enemy Turn
+            var enemyMove = enemyUnit.Dragon.GetRandomMove();
+            yield return RunMove(enemyUnit, playerUnit, enemyMove);
+            yield return RunAfterTurn(enemyUnit);
+            if (state == BattleState.BattleOver) yield break;
+        }
     }
 
-    IEnumerator EnemyMove()
-    {
-        state = BattleState.PerformMove;
-
-        var move = enemyUnit.Dragon.GetRandomMove();
-        yield return RunMove(enemyUnit, playerUnit, move);
-
-        // If the battle stat was not changed by RunMove, then go to next step
-        if (state == BattleState.PerformMove)
-            ActionSelection();
-        
-    }
 
     IEnumerator RunMove(BattleUnit sourceUnit, BattleUnit targetUnit, Move move)
     {
@@ -128,22 +149,10 @@ public class BattleSystem : MonoBehaviour
 
             CheckForBattleOver(targetUnit);
             //Game over
+            state = BattleState.BattleOver;
         }
 
-        // Statues like burn or psn will hurt the dragon after the turn
-        sourceUnit.Dragon.OnAfterTurn();
-        yield return ShowStatusChanges(sourceUnit.Dragon);
-        yield return sourceUnit.Hud.UpdateHP();
-
-        if (sourceUnit.Dragon.HP <= 0)
-        {
-            yield return dialogBox.TypeDialog($"{targetUnit.Dragon.Base.Name} Fainted");
-            sourceUnit.PlayFaintAnimation();
-            yield return new WaitForSeconds(2f);
-
-            CheckForBattleOver(sourceUnit);
-            //Game over
-        }
+        
     }
 
     IEnumerator RunMoveEffects(Move move, Dragon source, Dragon target)
@@ -169,6 +178,25 @@ public class BattleSystem : MonoBehaviour
         yield return ShowStatusChanges(target);
     }
 
+    IEnumerator RunAfterTurn(BattleUnit sourceUnit)
+    {
+        if (state == BattleState.BattleOver) yield break;
+
+        // Statues like burn or psn will hurt the dragon after the turn
+        sourceUnit.Dragon.OnAfterTurn();
+        yield return ShowStatusChanges(sourceUnit.Dragon);
+        yield return sourceUnit.Hud.UpdateHP();
+
+        if (sourceUnit.Dragon.HP <= 0)
+        {
+            yield return dialogBox.TypeDialog($"{sourceUnit.Dragon.Base.Name} Fainted");
+            sourceUnit.PlayFaintAnimation();
+            yield return new WaitForSeconds(2f);
+
+            CheckForBattleOver(sourceUnit);
+        }
+    }
+
     IEnumerator ShowStatusChanges(Dragon dragon)
     {
         while (dragon.StatusChanges.Count > 0)
@@ -190,11 +218,15 @@ public class BattleSystem : MonoBehaviour
             else
             {
                 //game over
+                state = BattleState.BattleOver;
+
             }
         } 
         else
         {
             // game over
+            state = BattleState.BattleOver;
+
         }
     }
 
@@ -256,6 +288,7 @@ public class BattleSystem : MonoBehaviour
             else if (currentAction == 2)
             {
                 //Dragon
+                prevState = state;
                 OpenPartyScreen();
             }
             else if (currentAction == 3)
@@ -284,7 +317,7 @@ public class BattleSystem : MonoBehaviour
         {
             dialogBox.EnableMoveSelector(false);
             dialogBox.EnableDialogText(true);
-            StartCoroutine(PlayerMove());
+            StartCoroutine(RunTurns(BattleAction.Move));
 
         }
         else if (Input.GetKeyDown(KeyCode.X))
@@ -325,11 +358,27 @@ public class BattleSystem : MonoBehaviour
             }
 
             partyScreen.gameObject.SetActive(false);
+
+            if (prevState == BattleState.ActionSelection)
+            {
+                prevState = null;
+                StartCoroutine(RunTurns(BattleAction.SwitchDragon));
+            } 
+            else
+            {
+                state = BattleState.MoveSelection;
+
+                dialogBox.EnableActionSelector(false);
+
+                StartCoroutine(SwitchDragon(selectedMember));
+            }
+            /*
+
             state = BattleState.MoveSelection;
 
             dialogBox.EnableActionSelector(false);
 
-            StartCoroutine(SwitchDragon(selectedMember));
+            StartCoroutine(SwitchDragon(selectedMember));*/
         }
         else if(Input.GetKeyDown(KeyCode.X))
         {
@@ -354,6 +403,7 @@ public class BattleSystem : MonoBehaviour
 
         yield return dialogBox.TypeDialog($"Go {newDragon.Base.Name}!");
 
-        StartCoroutine(EnemyMove());
+        state = BattleState.RunningTurn;
+        //StartCoroutine(EnemyMove());
     }
 }
