@@ -22,7 +22,8 @@ public class Dragon
             return level;
         }
     }
-
+    
+    public int Exp { get; set; }
     public int HP { get; set; }
     public List<Move> Moves { get; set; }
     public Move CurrentMove { get; set; }
@@ -30,7 +31,7 @@ public class Dragon
     public Dictionary<Stat, int> StatBoosts { get; private set; }
 
     public Condition Status { get; private set; }
-    public Queue<string> StatusChanges { get; private set; } = new Queue<string>();
+    public Queue<string> StatusChanges { get; private set; }
 
     public bool HpChanged { get; set; }
 
@@ -52,9 +53,13 @@ public class Dragon
                 break;
             }
         }
+
+        Exp = Base.GetExpForLevel(Level); 
+
         CalculateStats();
 
         HP = MaxHp;
+        StatusChanges = new Queue<string>();
 
         ResetStatBoost();
 
@@ -123,6 +128,16 @@ public class Dragon
 
             Debug.Log($"{stat} has been boosted to {StatBoosts[stat]}");
         }
+    }
+
+    public bool CheckForlevelUp()
+    {
+        if(Exp > Base.GetExpForLevel(level + 1))
+        {
+            ++level;
+            return true;
+        }
+        return false;
     }
 
     public int Attack

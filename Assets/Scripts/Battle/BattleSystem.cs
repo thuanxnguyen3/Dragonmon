@@ -1,3 +1,4 @@
+using DG.Tweening;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -12,11 +13,11 @@ public class BattleSystem : MonoBehaviour
     [SerializeField] BattleUnit enemyUnit;
     [SerializeField] BattleDialogBox dialogBox;
     [SerializeField] PartyScreen partyScreen;
+    [SerializeField] GameObject dragonballSprite;
 
     //public event Action<bool> OnBattleOver;
 
     BattleState state;
-    BattleState? prevState;
     int currentAction;
     int currentMove;
     int currentMember;
@@ -54,6 +55,7 @@ public class BattleSystem : MonoBehaviour
 
     void OpenPartyScreen()
     {
+        partyScreen.CalledFrom = state;
         state = BattleState.PartyScreen;
         partyScreen.SetPartyData(playerParty.Dragons);
         partyScreen.gameObject.SetActive(true);
@@ -81,15 +83,20 @@ public class BattleSystem : MonoBehaviour
             var firstUnit = playerUnit;
             var secondUnit = enemyUnit;
 
+            var secondDragon = secondUnit.Dragon;
+
             //First turn
             yield return RunMove(firstUnit, secondUnit, firstUnit.Dragon.CurrentMove);
             yield return RunAfterTurn(firstUnit);
             if (state == BattleState.BattleOver) yield break;
 
-            //Second turn
-            yield return RunMove(secondUnit, firstUnit, secondUnit.Dragon.CurrentMove);
-            yield return RunAfterTurn(secondUnit);
-            if (state == BattleState.BattleOver) yield break;
+            if (secondDragon.HP > 0)
+            {
+                //Second turn
+                yield return RunMove(secondUnit, firstUnit, secondUnit.Dragon.CurrentMove);
+                yield return RunAfterTurn(secondUnit);
+                if (state == BattleState.BattleOver) yield break;
+            }
 
         } 
         else
@@ -100,6 +107,11 @@ public class BattleSystem : MonoBehaviour
                 state = BattleState.Busy;
                 yield return SwitchDragon(selectedDragon);
             }
+            else if (playerAction == BattleAction.UseItem)
+            {
+                dialogBox.EnableActionSelector(false);
+                yield return ThrowDragonball();
+            }
 
             //Enemy Turn
             var enemyMove = enemyUnit.Dragon.GetRandomMove();
@@ -107,6 +119,9 @@ public class BattleSystem : MonoBehaviour
             yield return RunAfterTurn(enemyUnit);
             if (state == BattleState.BattleOver) yield break;
         }
+
+        if (state != BattleState.BattleOver)
+            ActionSelection();
     }
 
 
@@ -143,13 +158,7 @@ public class BattleSystem : MonoBehaviour
 
         if (targetUnit.Dragon.HP <= 0)
         {
-            yield return dialogBox.TypeDialog($"{targetUnit.Dragon.Base.Name} Fainted");
-            targetUnit.PlayFaintAnimation();
-            yield return new WaitForSeconds(2f);
-
-            CheckForBattleOver(targetUnit);
-            //Game over
-            state = BattleState.BattleOver;
+            yield return HandleDragonFainted(targetUnit);
         }
 
         
@@ -181,6 +190,7 @@ public class BattleSystem : MonoBehaviour
     IEnumerator RunAfterTurn(BattleUnit sourceUnit)
     {
         if (state == BattleState.BattleOver) yield break;
+        yield return new WaitUntil(() => state == BattleState.RunningTurn);
 
         // Statues like burn or psn will hurt the dragon after the turn
         sourceUnit.Dragon.OnAfterTurn();
@@ -189,11 +199,8 @@ public class BattleSystem : MonoBehaviour
 
         if (sourceUnit.Dragon.HP <= 0)
         {
-            yield return dialogBox.TypeDialog($"{sourceUnit.Dragon.Base.Name} Fainted");
-            sourceUnit.PlayFaintAnimation();
-            yield return new WaitForSeconds(2f);
-
-            CheckForBattleOver(sourceUnit);
+            yield return HandleDragonFainted(sourceUnit);
+            yield return new WaitUntil(() => state == BattleState.RunningTurn);
         }
     }
 
@@ -204,6 +211,40 @@ public class BattleSystem : MonoBehaviour
             var message = dragon.StatusChanges.Dequeue();
             yield return dialogBox.TypeDialog(message);
         }
+    }
+
+    IEnumerator HandleDragonFainted(BattleUnit faintedUnit)
+    {
+        yield return dialogBox.TypeDialog($"{faintedUnit.Dragon.Base.Name} Fainted");
+        faintedUnit.PlayFaintAnimation();
+        yield return new WaitForSeconds(2f);
+        
+        if (!faintedUnit.IsPlayerUnit)
+        {
+            //Exp gain
+            int expYield = faintedUnit.Dragon.Base.ExpYield;
+            int enemyLevel = faintedUnit.Dragon.Level;
+
+            int expGain = Mathf.FloorToInt((expYield * enemyLevel) / 5);
+            playerUnit.Dragon.Exp += expGain;
+            yield return dialogBox.TypeDialog($"{playerUnit.Dragon.Base.Name} gained {expGain} EXP. Points!");
+            yield return playerUnit.Hud.SetExpSmooth();
+
+            //Check Level Up
+            while (playerUnit.Dragon.CheckForlevelUp())
+            {
+                playerUnit.Hud.SetLevel();
+                yield return dialogBox.TypeDialog($"{playerUnit.Dragon.Base.Name} grew to LV. {playerUnit.Dragon.Level}!");
+                
+                yield return playerUnit.Hud.SetExpSmooth(true);
+
+            }
+
+            yield return new WaitForSeconds(1f);
+        }
+
+        CheckForBattleOver(faintedUnit);
+        
     }
 
     void CheckForBattleOver(BattleUnit faintedUnit)
@@ -257,6 +298,7 @@ public class BattleSystem : MonoBehaviour
         {
             HandlePartySelection();
         }
+
     }
 
     void HandleActionSelection()
@@ -284,16 +326,17 @@ public class BattleSystem : MonoBehaviour
             else if (currentAction == 1)
             {
                 //Bag
+                StartCoroutine(RunTurns(BattleAction.UseItem));
             }
             else if (currentAction == 2)
             {
                 //Dragon
-                prevState = state;
                 OpenPartyScreen();
             }
             else if (currentAction == 3)
             {
                 //Run
+                Application.Quit();
             }
         }
     }
@@ -315,6 +358,9 @@ public class BattleSystem : MonoBehaviour
 
         if(Input.GetKeyDown(KeyCode.Z))
         {
+            var move = playerUnit.Dragon.Moves[currentMove];
+            if (move.PP == 0) return;
+
             dialogBox.EnableMoveSelector(false);
             dialogBox.EnableDialogText(true);
             StartCoroutine(RunTurns(BattleAction.Move));
@@ -359,9 +405,8 @@ public class BattleSystem : MonoBehaviour
 
             partyScreen.gameObject.SetActive(false);
 
-            if (prevState == BattleState.ActionSelection)
+            if (partyScreen.CalledFrom == BattleState.ActionSelection)
             {
-                prevState = null;
                 StartCoroutine(RunTurns(BattleAction.SwitchDragon));
             } 
             else
@@ -372,19 +417,17 @@ public class BattleSystem : MonoBehaviour
 
                 StartCoroutine(SwitchDragon(selectedMember));
             }
-            /*
-
-            state = BattleState.MoveSelection;
-
             dialogBox.EnableActionSelector(false);
 
-            StartCoroutine(SwitchDragon(selectedMember));*/
+            partyScreen.CalledFrom = null;
         }
         else if(Input.GetKeyDown(KeyCode.X))
         {
             partyScreen.gameObject.SetActive(false);
             ActionSelection();
+            partyScreen.CalledFrom = null;
         }
+
     }
 
     IEnumerator SwitchDragon(Dragon newDragon)
@@ -404,6 +447,80 @@ public class BattleSystem : MonoBehaviour
         yield return dialogBox.TypeDialog($"Go {newDragon.Base.Name}!");
 
         state = BattleState.RunningTurn;
+      
         //StartCoroutine(EnemyMove());
+    }
+
+    IEnumerator ThrowDragonball()
+    {
+        state = BattleState.Busy;
+
+        yield return dialogBox.TypeDialog($"Player used DRAGONBALL!");
+        var dragonballObj = Instantiate(dragonballSprite, playerUnit.transform.position - new Vector3(2, 0), Quaternion.identity);
+        var dragonball = dragonballObj.GetComponent<SpriteRenderer>();
+
+        //Animations
+        yield return dragonball.transform.DOJump(enemyUnit.transform.position + new Vector3(0, 2), 1.5f, 1, 1f).WaitForCompletion();
+        yield return enemyUnit.PlayCaptureAnimation();
+        yield return dragonball.transform.DOMoveY(enemyUnit.transform.position.y - 1.3f, 0.5f).WaitForCompletion();
+
+        int shakeCount = TryToCatchDragon(enemyUnit.Dragon);
+
+        for(int i = 0; i < Mathf.Min(shakeCount, 3); i++)
+        {
+            yield return new WaitForSeconds(0.5f);
+            yield return dragonball.transform.DOPunchRotation(new Vector3(0, 0, 20f), 0.8f).WaitForCompletion();
+        }
+
+        if (shakeCount == 4)
+        {
+            // Dragon is caught
+            yield return dialogBox.TypeDialog($"Gotcha! {enemyUnit.Dragon.Base.Name} was caught");
+            yield return dragonball.DOFade(0, 1.5f).WaitForCompletion();
+            yield return dialogBox.TypeDialog($"{enemyUnit.Dragon.Base.Name} has been added to your party");
+
+
+            Destroy(dragonball);
+            state = BattleState.BattleOver;
+            yield return new WaitForSeconds(5f);
+            Application.Quit();
+        } 
+        else
+        {
+            // Dragon broke out
+            yield return new WaitForSeconds(1f);
+            dragonball.DOFade(0, 0.2f);
+            yield return enemyUnit.PlayBreakOutAnimation();
+
+            if (shakeCount < 2)
+                yield return dialogBox.TypeDialog($"{enemyUnit.Dragon.Base.Name} broke free");
+            else
+                yield return dialogBox.TypeDialog($"Almost caught it");
+
+            Destroy(dragonball);
+            state = BattleState.RunningTurn; 
+
+        }
+    }
+
+    int TryToCatchDragon(Dragon dragon)
+    {
+        float a = (3 * dragon.MaxHp - 2 * dragon.HP) * dragon.Base.CatchRate * ConditionDB.GetStatusBonus(dragon.Status) / (3 * dragon.MaxHp);
+
+        if (a >= 255)
+            return 4;
+
+        float b = 1048560 / Mathf.Sqrt(Mathf.Sqrt(16711680 / a));
+
+        int shakeCount = 0;
+        while (shakeCount < 4)
+        {
+            if (UnityEngine.Random.Range(0, 65535) >= b)
+                break;
+
+            ++shakeCount;
+        }
+
+        return shakeCount;
     }
 }

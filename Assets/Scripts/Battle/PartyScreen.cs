@@ -9,6 +9,12 @@ public class PartyScreen : MonoBehaviour
 
     PartyMemberUI[] memberSlots;
     List<Dragon> dragons;
+    
+    /// <summary>
+    /// Party Screen can be called from different states like ActionSelect...
+    /// </summary>
+    public BattleState? CalledFrom { get; set; }
+
     public void Init()
     {
         memberSlots = GetComponentsInChildren<PartyMemberUI>();
