@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -9,7 +10,11 @@ public class PartyScreen : MonoBehaviour
 
     PartyMemberUI[] memberSlots;
     List<Dragon> dragons;
-    
+
+    int selection = 0;
+
+    public Dragon SelectedMember => dragons[selection];
+
     /// <summary>
     /// Party Screen can be called from different states like ActionSelect...
     /// </summary>
@@ -36,8 +41,40 @@ public class PartyScreen : MonoBehaviour
             }
         }
 
+        UpdateMemberSelection(selection);
+
         messageText.text = "Choose a Dragon";
     }
+
+    public void HandleUpdate(Action onSelected, Action onBack)
+    {
+        var prevSelection = selection;
+
+        if (Input.GetKeyDown(KeyCode.RightArrow))
+            ++selection;
+        else if (Input.GetKeyDown(KeyCode.LeftArrow))
+            --selection;
+        else if (Input.GetKeyDown(KeyCode.DownArrow))
+            selection += 2;
+        else if (Input.GetKeyDown(KeyCode.UpArrow))
+            selection -= 2;
+
+        selection = Mathf.Clamp(selection, 0, dragons.Count - 1);
+
+        if (selection != prevSelection) 
+            UpdateMemberSelection(selection);
+
+        if (Input.GetKeyDown(KeyCode.Z))
+        {
+            onSelected?.Invoke();
+        }
+        else if (Input.GetKeyDown(KeyCode.X))
+        {
+            onBack?.Invoke();
+        }
+
+    }
+
 
     public void UpdateMemberSelection(int selectedMember)
     {

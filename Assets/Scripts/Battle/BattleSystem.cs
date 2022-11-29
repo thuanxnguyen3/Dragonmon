@@ -20,7 +20,6 @@ public class BattleSystem : MonoBehaviour
     BattleState state;
     int currentAction;
     int currentMove;
-    int currentMember;
 
     DragonParty playerParty;
     Dragon enemyDragon;
@@ -103,7 +102,7 @@ public class BattleSystem : MonoBehaviour
         {
             if(playerAction == BattleAction.SwitchDragon)
             {
-                var selectedDragon = playerParty.Dragons[currentMember];
+                var selectedDragon = partyScreen.SelectedMember;
                 state = BattleState.Busy;
                 yield return SwitchDragon(selectedDragon);
             }
@@ -376,22 +375,9 @@ public class BattleSystem : MonoBehaviour
 
     void HandlePartySelection()
     {
-        if (Input.GetKeyDown(KeyCode.RightArrow))
-            ++currentMember;
-        else if (Input.GetKeyDown(KeyCode.LeftArrow))
-            --currentMember;
-        else if (Input.GetKeyDown(KeyCode.DownArrow))
-            currentMember += 2;
-        else if (Input.GetKeyDown(KeyCode.UpArrow))
-            currentMember -= 2;
-
-        currentMember = Mathf.Clamp(currentMember, 0, playerParty.Dragons.Count - 1);
-
-        partyScreen.UpdateMemberSelection(currentMember);
-
-        if(Input.GetKeyDown(KeyCode.Z))
+        Action onSelected = () =>
         {
-            var selectedMember = playerParty.Dragons[currentMember];
+            var selectedMember = partyScreen.SelectedMember;
             if (selectedMember.HP <= 0)
             {
                 partyScreen.SetMessageText("You can't send out a fainted dragon");
@@ -408,7 +394,7 @@ public class BattleSystem : MonoBehaviour
             if (partyScreen.CalledFrom == BattleState.ActionSelection)
             {
                 StartCoroutine(RunTurns(BattleAction.SwitchDragon));
-            } 
+            }
             else
             {
                 state = BattleState.MoveSelection;
@@ -420,13 +406,17 @@ public class BattleSystem : MonoBehaviour
             dialogBox.EnableActionSelector(false);
 
             partyScreen.CalledFrom = null;
-        }
-        else if(Input.GetKeyDown(KeyCode.X))
+        };
+
+        Action onBack = () =>
         {
             partyScreen.gameObject.SetActive(false);
             ActionSelection();
             partyScreen.CalledFrom = null;
-        }
+        };
+
+        partyScreen.HandleUpdate(onSelected, onBack);
+        
 
     }
 
