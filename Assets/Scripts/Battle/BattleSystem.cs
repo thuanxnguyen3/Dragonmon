@@ -4,7 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum BattleState { Start, ActionSelection, MoveSelection, RunningTurn, Busy, PartyScreen, BattleOver}
+public enum BattleState { Start, ActionSelection, MoveSelection, RunningTurn, Busy, Bag, PartyScreen, BattleOver}
 
 public enum BattleAction { Move, SwitchDragon, UseItem, Run}
 public class BattleSystem : MonoBehaviour
@@ -14,6 +14,7 @@ public class BattleSystem : MonoBehaviour
     [SerializeField] BattleDialogBox dialogBox;
     [SerializeField] PartyScreen partyScreen;
     [SerializeField] GameObject dragonballSprite;
+    [SerializeField] InventoryUI inventoryUI;
 
     //public event Action<bool> OnBattleOver;
 
@@ -50,6 +51,13 @@ public class BattleSystem : MonoBehaviour
         state = BattleState.ActionSelection;
         dialogBox.SetDialog("Choose an action");
         dialogBox.EnableActionSelector(true);
+    }
+
+    void OpenBag()
+    {
+        state = BattleState.Bag;
+        inventoryUI.gameObject.SetActive(true);
+
     }
 
     void OpenPartyScreen()
@@ -297,6 +305,16 @@ public class BattleSystem : MonoBehaviour
         {
             HandlePartySelection();
         }
+        else if (state == BattleState.Bag)
+        {
+            Action onBack = () =>
+            {
+                inventoryUI.gameObject.SetActive(false);
+                state = BattleState.ActionSelection;
+            };
+
+            inventoryUI.HandleUpdate(onBack);
+        }
 
     }
 
@@ -319,22 +337,23 @@ public class BattleSystem : MonoBehaviour
         {
             if (currentAction == 0)
             {
-                //Fight
+                // Fight
                 MoveSelection();
             } 
             else if (currentAction == 1)
             {
-                //Bag
-                StartCoroutine(RunTurns(BattleAction.UseItem));
+                // Bag
+                OpenBag();
+                // StartCoroutine(RunTurns(BattleAction.UseItem));
             }
             else if (currentAction == 2)
             {
-                //Dragon
+                // Dragon
                 OpenPartyScreen();
             }
             else if (currentAction == 3)
             {
-                //Run
+                // Run
                 Application.Quit();
             }
         }
