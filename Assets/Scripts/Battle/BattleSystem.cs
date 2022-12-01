@@ -16,6 +16,8 @@ public class BattleSystem : MonoBehaviour
     [SerializeField] GameObject dragonballSprite;
     [SerializeField] InventoryUI inventoryUI;
 
+    [SerializeField] AudioSource attackSFX;
+
     //public event Action<bool> OnBattleOver;
 
     BattleState state;
@@ -149,6 +151,7 @@ public class BattleSystem : MonoBehaviour
         sourceUnit.PlayAttackAnimation();
         yield return new WaitForSeconds(1f);
         targetUnit.PlayHitAnimation();
+        attackSFX.Play();
 
         if (move.Base.Category == MoveCategory.Status)
         {
