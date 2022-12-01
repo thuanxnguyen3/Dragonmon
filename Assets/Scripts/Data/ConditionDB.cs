@@ -25,7 +25,7 @@ public class ConditionDB
                 StartMessage = "has been poisoned",
                 OnAfterTurn = (Dragon dragon) =>
                 {
-                    dragon.UpdateHP(dragon.MaxHp / 8);
+                    dragon.DecreaseHP(dragon.MaxHp / 8);
                     dragon.StatusChanges.Enqueue($"{dragon.Base.Name} hurt itself due to poison");
                 }
             }
@@ -38,7 +38,7 @@ public class ConditionDB
                 StartMessage = "has been burned",
                 OnAfterTurn = (Dragon dragon) =>
                 {
-                    dragon.UpdateHP(dragon.MaxHp / 16);
+                    dragon.DecreaseHP(dragon.MaxHp / 16);
                     dragon.StatusChanges.Enqueue($"{dragon.Base.Name} hurt itself due to burn");
                 }
             }

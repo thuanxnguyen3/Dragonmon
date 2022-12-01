@@ -10,7 +10,7 @@ public class PartyScreen : MonoBehaviour
 
     PartyMemberUI[] memberSlots;
     List<Dragon> dragons;
-
+    DragonParty party;
     int selection = 0;
 
     public Dragon SelectedMember => dragons[selection];
@@ -23,17 +23,22 @@ public class PartyScreen : MonoBehaviour
     public void Init()
     {
         memberSlots = GetComponentsInChildren<PartyMemberUI>();
+
+        party = DragonParty.GetPlayerParty();
+        SetPartyData();
+
+        party.OnUpdated += SetPartyData;
     }
 
-    public void SetPartyData(List<Dragon> dragons)
+    public void SetPartyData()
     {
-        this.dragons = dragons;
+        dragons = party.Dragons;
 
         for (int i = 0; i < memberSlots.Length; i++)
         {
             if (i < dragons.Count)
             {
-                memberSlots[i].SetData(dragons[i]);
+                memberSlots[i].Init(dragons[i]);
             }
             else
             {

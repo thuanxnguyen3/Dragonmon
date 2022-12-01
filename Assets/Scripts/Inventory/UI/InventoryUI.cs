@@ -40,6 +40,8 @@ public class InventoryUI : MonoBehaviour
     private void Start()
     {
         UpdateItemList();
+
+        inventory.OnUpdated += UpdateItemList;
     }
 
     void UpdateItemList()
@@ -91,7 +93,7 @@ public class InventoryUI : MonoBehaviour
             // Handle party selection
             Action onSelected = () =>
             {
-                // Use the item on the selected dragon
+                inventory.UseItem(selectedItem, partyScreen.SelectedMember);
             };
             Action onBackPartyScreen = () =>
             {
@@ -129,7 +131,7 @@ public class InventoryUI : MonoBehaviour
         upArrow.gameObject.SetActive(showUpArrow);
 
         bool showDownArrow = selectedItem + itemsInViewport / 2 < slotUIList.Count;
-        upArrow.gameObject.SetActive(showDownArrow);
+        downArrow.gameObject.SetActive(showDownArrow);
 
     }
 

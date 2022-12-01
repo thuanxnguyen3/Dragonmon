@@ -15,14 +15,21 @@ public class PartyMemberUI : MonoBehaviour
     Dragon _dragon;
 
 
-    public void SetData(Dragon dragon)
+    public void Init(Dragon dragon)
     {
         _dragon = dragon;
+        UpdateData();
 
-        nameText.text = dragon.Base.Name;
-        levelText.text = "Lvl " + dragon.Level;
-        hpBar.SetHP((float)dragon.HP / dragon.MaxHp);
-        hpText.text = dragon.HP + "/" + dragon.MaxHp;
+        _dragon.OnHPChanged += UpdateData;
+        
+    }
+
+    void UpdateData()
+    {
+        nameText.text = _dragon.Base.Name;
+        levelText.text = "Lvl " + _dragon.Level;
+        hpBar.SetHP((float)_dragon.HP / _dragon.MaxHp);
+        hpText.text = _dragon.HP + "/" + _dragon.MaxHp;
     }
 
     public void SetSelected(bool selected)

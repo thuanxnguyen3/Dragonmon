@@ -64,7 +64,6 @@ public class BattleSystem : MonoBehaviour
     {
         partyScreen.CalledFrom = state;
         state = BattleState.PartyScreen;
-        partyScreen.SetPartyData(playerParty.Dragons);
         partyScreen.gameObject.SetActive(true);
     }
 
