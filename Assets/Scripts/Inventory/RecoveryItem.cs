@@ -23,6 +23,27 @@ public class RecoveryItem : ItemBase
 
     public override bool Use(Dragon dragon)
     {
+        // Revive
+        if(revive || maxRevive)
+        {
+            if (dragon.HP > 0)
+                return false;
+
+            if (revive)
+                dragon.IncreaseHP(dragon.MaxHp / 2);
+            else if (maxRevive)
+                dragon.IncreaseHP(dragon.MaxHp);
+
+            dragon.CureStatus();
+
+            return true;
+        }
+
+        // No other items can be used on fainted dragon
+        if (dragon.HP == 0)
+            return false;
+
+        // Restore HP
         if (hpAmount > 0)
         {
             if (dragon.HP == dragon.MaxHp)

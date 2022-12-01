@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b728ce3dab995c34b89a52543b89d8bf, type: 3}
+  m_Name: GreatDragonBall
+  m_EditorClassIdentifier: 
+  name: Great Dragonball
+  description: A ball with higher captures rate than dragonball
+  icon: {fileID: 1165679201, guid: f3e591cd50b8c6445b0e2750c2bfc8d4, type: 3}
+  catchRateModifier: 1.5

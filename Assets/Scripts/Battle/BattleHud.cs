@@ -23,6 +23,13 @@ public class BattleHud : MonoBehaviour
 
     public void SetData(Dragon dragon)
     {
+        if(_dragon != null)
+        {
+            _dragon.OnHPChanged -= UpdateHP;
+            _dragon.OnStatusChanged -= SetStatusText;
+
+        }
+
         _dragon = dragon;
 
         nameText.text = dragon.Base.Name;
@@ -40,6 +47,7 @@ public class BattleHud : MonoBehaviour
 
         SetStatusText();
         _dragon.OnStatusChanged += SetStatusText;
+        _dragon.OnHPChanged += UpdateHP;
     }
 
     void SetStatusText()
@@ -92,14 +100,22 @@ public class BattleHud : MonoBehaviour
         return Mathf.Clamp01(normalizedExp);
     }
 
-    public IEnumerator UpdateHP ()
+    public void UpdateHP()
     {
-        if(_dragon.HpChanged)
-        {
-            yield return hpBar.SetHPSmooth((float)_dragon.HP / _dragon.MaxHp);
-            hpText.text = _dragon.HP + "/" + _dragon.MaxHp;
-            _dragon.HpChanged = false;
-        }
+        StartCoroutine(UpdateHPAsync());
+    }
+
+    public IEnumerator UpdateHPAsync ()
+    {
+
+        yield return hpBar.SetHPSmooth((float)_dragon.HP / _dragon.MaxHp);
+        hpText.text = _dragon.HP + "/" + _dragon.MaxHp;
 
     }
+
+    public IEnumerator WaitForHPUpdate()
+    {
+        yield return new WaitUntil(() => hpBar.IsUpdating == false);
+    }
+
 }

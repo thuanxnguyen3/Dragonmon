@@ -115,8 +115,8 @@ public class BattleSystem : MonoBehaviour
             }
             else if (playerAction == BattleAction.UseItem)
             {
+                // This is handled from item screen, so do nothing and skip to enemy move
                 dialogBox.EnableActionSelector(false);
-                yield return ThrowDragonball();
             }
 
             //Enemy Turn
@@ -138,7 +138,7 @@ public class BattleSystem : MonoBehaviour
         if(!canRunMove)
         {
             yield return ShowStatusChanges(sourceUnit.Dragon);
-            yield return sourceUnit.Hud.UpdateHP();
+            yield return sourceUnit.Hud.WaitForHPUpdate();
             yield break;
         }
         yield return ShowStatusChanges(sourceUnit.Dragon);
@@ -157,7 +157,7 @@ public class BattleSystem : MonoBehaviour
         else
         {
             var damageDetails = targetUnit.Dragon.TakeDamage(move, sourceUnit.Dragon);
-            yield return targetUnit.Hud.UpdateHP();
+            yield return targetUnit.Hud.WaitForHPUpdate();
             yield return ShowDamageDetails(damageDetails);
         }
 
@@ -201,7 +201,7 @@ public class BattleSystem : MonoBehaviour
         // Statues like burn or psn will hurt the dragon after the turn
         sourceUnit.Dragon.OnAfterTurn();
         yield return ShowStatusChanges(sourceUnit.Dragon);
-        yield return sourceUnit.Hud.UpdateHP();
+        yield return sourceUnit.Hud.WaitForHPUpdate();
 
         if (sourceUnit.Dragon.HP <= 0)
         {
@@ -312,7 +312,12 @@ public class BattleSystem : MonoBehaviour
                 state = BattleState.ActionSelection;
             };
 
-            inventoryUI.HandleUpdate(onBack);
+            Action<ItemBase> onItemUsed = (ItemBase usedItem) =>
+            {
+                StartCoroutine(OnItemUsed(usedItem));
+            };
+
+            inventoryUI.HandleUpdate(onBack, onItemUsed);
         }
 
     }
@@ -459,20 +464,35 @@ public class BattleSystem : MonoBehaviour
         //StartCoroutine(EnemyMove());
     }
 
-    IEnumerator ThrowDragonball()
+    IEnumerator OnItemUsed(ItemBase usedItem)
     {
         state = BattleState.Busy;
+        inventoryUI.gameObject.SetActive(false);
 
-        yield return dialogBox.TypeDialog($"Player used DRAGONBALL!");
+        if (usedItem is DragonBallItem)
+        {
+            yield return ThrowDragonball((DragonBallItem)usedItem);
+        }
+
+        StartCoroutine(RunTurns(BattleAction.UseItem));
+    }
+
+    IEnumerator ThrowDragonball(DragonBallItem dragonBallItem)
+    {
+        state = BattleState.Busy;
+        dialogBox.EnableActionSelector(false);
+
+        yield return dialogBox.TypeDialog($"Player used {dragonBallItem.Name.ToUpper()}!");
         var dragonballObj = Instantiate(dragonballSprite, playerUnit.transform.position - new Vector3(2, 0), Quaternion.identity);
         var dragonball = dragonballObj.GetComponent<SpriteRenderer>();
+        dragonball.sprite = dragonBallItem.Icon;
 
         //Animations
         yield return dragonball.transform.DOJump(enemyUnit.transform.position + new Vector3(0, 2), 1.5f, 1, 1f).WaitForCompletion();
         yield return enemyUnit.PlayCaptureAnimation();
         yield return dragonball.transform.DOMoveY(enemyUnit.transform.position.y - 1.3f, 0.5f).WaitForCompletion();
 
-        int shakeCount = TryToCatchDragon(enemyUnit.Dragon);
+        int shakeCount = TryToCatchDragon(enemyUnit.Dragon, dragonBallItem);
 
         for(int i = 0; i < Mathf.Min(shakeCount, 3); i++)
         {
@@ -511,9 +531,9 @@ public class BattleSystem : MonoBehaviour
         }
     }
 
-    int TryToCatchDragon(Dragon dragon)
+    int TryToCatchDragon(Dragon dragon, DragonBallItem dragonBallItem)
     {
-        float a = (3 * dragon.MaxHp - 2 * dragon.HP) * dragon.Base.CatchRate * ConditionDB.GetStatusBonus(dragon.Status) / (3 * dragon.MaxHp);
+        float a = (3 * dragon.MaxHp - 2 * dragon.HP) * dragon.Base.CatchRate * dragonBallItem.CatchRateModifier * ConditionDB.GetStatusBonus(dragon.Status) / (3 * dragon.MaxHp);
 
         if (a >= 255)
             return 4;
